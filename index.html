@@ -20,12 +20,28 @@
   </section>
   <section id="appPanel" class="hidden">
     <div class="panel"><div class="item-top"><div><h2 class="section-title">Ciao, <span id="userName">collega</span></h2><p class="muted" id="userEmail"></p></div><button id="logoutBtn" class="secondary">Esci</button></div></div>
-    <nav class="tabs"><button data-tab="calendar" class="active">Calendario</button><button data-tab="add">Inserisci ferie</button><button data-tab="mine">Le mie richieste</button><button data-tab="history">Storico</button></nav>
-    <section id="tab-calendar" class="panel"><div class="monthnav"><button id="prevMonth" class="secondary" aria-label="Mese precedente">‹</button><h3 id="monthLabel"></h3><button id="nextMonth" class="secondary" aria-label="Mese successivo">›</button></div><div class="calendar" id="calendar"></div><p class="muted small">Blu: le tue ferie. Verde: ferie degli altri colleghi. Le richieste annullate non vengono mostrate nel calendario.</p><div id="conflicts" class="msg hidden"></div></section>
+<nav class="tabs"><button data-tab="calendar" class="active">Calendario</button><button data-tab="add">Inserisci ferie</button><button data-tab="mine">Le mie richieste</button><button data-tab="history">Storico</button><button data-tab="password">Cambia password</button></nav>    <section id="tab-calendar" class="panel"><div class="monthnav"><button id="prevMonth" class="secondary" aria-label="Mese precedente">‹</button><h3 id="monthLabel"></h3><button id="nextMonth" class="secondary" aria-label="Mese successivo">›</button></div><div class="calendar" id="calendar"></div><p class="muted small">Blu: le tue ferie. Verde: ferie degli altri colleghi. Le richieste annullate non vengono mostrate nel calendario.</p><div id="conflicts" class="msg hidden"></div></section>
     <section id="tab-add" class="panel hidden"><h2 class="section-title">Inserisci una richiesta</h2><form id="leaveForm"><div class="grid"><div class="field"><label for="startDate">Data iniziale</label><input id="startDate" type="date" required></div><div class="field"><label for="endDate">Data finale</label><input id="endDate" type="date" required></div></div><div class="field"><label for="notes">Note (facoltative)</label><textarea id="notes" maxlength="500" placeholder="Eventuali informazioni utili"></textarea></div><p class="muted small">La richiesta viene condivisa subito con i colleghi. Il sistema segnalerà eventuali sovrapposizioni, senza richiedere approvazioni.</p><button type="submit">Salva ferie</button></form></section>
     <section id="tab-mine" class="panel hidden"><h2 class="section-title">Le mie richieste</h2><div id="mineList" class="list"></div></section>
     <section id="tab-history" class="panel hidden"><h2 class="section-title">Storico cronologico</h2><p class="muted small">Le operazioni sono ordinate dalla più recente. Lo storico registra inserimenti, modifiche e annullamenti effettuati nel database.</p><div id="historyList" class="list"></div></section>
   </section>
+    <section id="tab-password" class="panel hidden">
+      <h2 class="section-title">Cambia password</h2>
+      <p class="muted">Scegli una nuova password per il tuo account personale.</p>
+      <form id="passwordForm">
+        <div class="field">
+          <label for="newPassword">Nuova password</label>
+          <input id="newPassword" type="password" autocomplete="new-password" minlength="8" required>
+        </div>
+        <div class="field">
+          <label for="confirmPassword">Conferma nuova password</label>
+          <input id="confirmPassword" type="password" autocomplete="new-password" minlength="8" required>
+        </div>
+        <button type="submit">Aggiorna password</button>
+      </form>
+      <p class="muted small">La password deve contenere almeno 8 caratteri.</p>
+    </section>
+
   <p class="foot">Ferie Condivise · Accesso riservato ai colleghi autorizzati</p>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -49,9 +65,36 @@ function renderHistory(names,rows){const el=$('historyList');el.innerHTML='';if(
 async function cancelLeave(id){if(!confirm('Vuoi annullare questa richiesta? Non potrà essere riattivata.'))return;const {error}=await db.from('ferie').update({stato:'annullata'}).eq('id',id).eq('collega_id',currentUser.id);if(error){message('Non è stato possibile annullare la richiesta: '+error.message,true);return}message('Richiesta annullata.');try{await loadData()}catch(e){message(e.message,true)}}
 $('loginForm').addEventListener('submit',async e=>{e.preventDefault();clearMessage();const {error}=await db.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});if(error){message('Accesso non riuscito: '+error.message,true);return}await startApp()});
 $('forgotBtn').addEventListener('click',async()=>{const email=$('email').value.trim();if(!email){message('Inserisci prima il tuo indirizzo e-mail.',true);return}const {error}=await db.auth.resetPasswordForEmail(email);if(error)message('Non è stato possibile inviare il recupero password: '+error.message,true);else message('Se l’indirizzo è registrato, riceverai le istruzioni per reimpostare la password.');});
+
+$('passwordForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  clearMessage();
+
+  const password = $('newPassword').value;
+  const confirmation = $('confirmPassword').value;
+
+  if (password.length < 8) {
+    message('La nuova password deve contenere almeno 8 caratteri.', true);
+    return;
+  }
+
+  if (password !== confirmation) {
+    message('Le due password non coincidono.', true);
+    return;
+  }
+
+  const { error } = await db.auth.updateUser({ password });
+
+  if (error) {
+    message('Non è stato possibile cambiare la password: ' + error.message, true);
+    return;
+  }
+
+  $('passwordForm').reset();
+  message('Password aggiornata correttamente.');
+});
 $('logoutBtn').addEventListener('click',async()=>{await db.auth.signOut();currentUser=null;$('appPanel').classList.add('hidden');$('loginPanel').classList.remove('hidden');message('Hai effettuato la disconnessione.')});
-document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));['calendar','add','mine','history'].forEach(t=>$('tab-'+t).classList.toggle('hidden',t!==b.dataset.tab));}));
-$('prevMonth').addEventListener('click',()=>{monthCursor.setMonth(monthCursor.getMonth()-1);renderCalendarFromLatest()});$('nextMonth').addEventListener('click',()=>{monthCursor.setMonth(monthCursor.getMonth()+1);renderCalendarFromLatest()});
+document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));['calendar','add','mine','history','password'].forEach(t=>$('tab-'+t).classList.toggle('hidden',t!==b.dataset.tab));}));$('prevMonth').addEventListener('click',()=>{monthCursor.setMonth(monthCursor.getMonth()-1);renderCalendarFromLatest()});$('nextMonth').addEventListener('click',()=>{monthCursor.setMonth(monthCursor.getMonth()+1);renderCalendarFromLatest()});
 async function renderCalendarFromLatest(){try{const {data:col,error}=await db.from('colleghi').select('id,nome');if(error)throw error;renderCalendar(Object.fromEntries((col||[]).map(x=>[x.id,x.nome])))}catch(e){message(e.message,true)}}
 $('leaveForm').addEventListener('submit',async e=>{e.preventDefault();clearMessage();const a=$('startDate').value,b=$('endDate').value;if(b<a){message('La data finale non può precedere quella iniziale.',true);return}const overlapsOther=leaveRows.some(r=>r.stato==='attiva'&&r.collega_id!==currentUser.id&&overlaps(a,b,r.data_inizio,r.data_fine));if(overlapsOther&&!confirm('Le date si sovrappongono alle ferie di almeno un collega. Vuoi inserire comunque la richiesta?'))return;const {error}=await db.from('ferie').insert({collega_id:currentUser.id,data_inizio:a,data_fine:b,note:$('notes').value.trim()||null});if(error){message('Non è stato possibile salvare le ferie: '+error.message,true);return}$('leaveForm').reset();message('Richiesta inserita correttamente.');document.querySelector('[data-tab="calendar"]').click();try{await loadData()}catch(err){message(err.message,true)}});
 async function startApp(){clearMessage();const {data:{user},error}=await db.auth.getUser();if(error||!user){$('appPanel').classList.add('hidden');$('loginPanel').classList.remove('hidden');return}currentUser=user;try{await refreshProfile();$('loginPanel').classList.add('hidden');$('appPanel').classList.remove('hidden');await loadData()}catch(e){$('appPanel').classList.add('hidden');$('loginPanel').classList.remove('hidden');message(e.message,true)}}

@@ -1,0 +1,21 @@
+FERIE CONDIVISE - VERSIONE INIZIALE
+
+Contenuto:
+- index.html: interfaccia web
+- manifest.webmanifest: impostazioni installazione PWA
+- sw.js: cache limitata ai file statici (non salva risposte Supabase)
+- icon.svg: icona
+
+Configurazione già inserita:
+- Supabase URL: https://xjurlovdgzeoeadujyda.supabase.co
+- Publishable key: inserita nel client. È una chiave pubblica, non usare mai service_role/secret nel browser.
+
+IMPORTANTE PRIMA DI USARLA CON I COLLEGHI:
+1. Questa è una prima versione da collaudare, non ancora una versione di produzione.
+2. Creare gli account dei colleghi in Supabase Authentication e aggiungere ogni utente autorizzato alla tabella public.colleghi con lo stesso UUID dell'utente Auth.
+3. Verificare l'invio delle email di recupero password e impostare i redirect URL in Supabase Auth dopo aver pubblicato il sito.
+4. Testare accesso, inserimento, modifica, annullamento e storico con almeno due account distinti.
+5. Le policy attuali consentono l'aggiornamento di qualunque colonna della propria riga ferie: per produzione occorre limitare con una funzione/trigger la possibilità di cambiare campi non previsti, oltre alle policy RLS già configurate.
+6. Il sito richiede connessione Internet per accedere ai dati. L'installazione PWA non significa che il calendario sia disponibile offline.
+
+Pubblicazione: caricare i quattro file in un progetto di hosting statico HTTPS (ad esempio Cloudflare Pages). Non inserire alcuna chiave secret o service_role.
